@@ -44,7 +44,13 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   if (!client.connected()) {
+    Serial.print(String(-1));
+    Serial.flush();
     reconnect();
+    Serial.print(String(0));
+    Serial.flush();
+    strRecv = "";
+    newDataComing = false;
   }
   client.loop();
   if (Serial.available() > 0) {
@@ -56,7 +62,9 @@ void loop() {
   } else {
     now = millis();
     if ((now - lastRecv > 100) && (newDataComing == true)) {
-      boolean isOK = client.publish(publishTopic, String(strRecv).c_str());
+      client.beginPublish(publishTopic, String(strRecv).length(), false);
+      client.print(String(strRecv).c_str());
+      client.endPublish();
       strRecv = "";
       newDataComing = false;
     }
@@ -69,6 +77,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     msg.concat((char)payload[i]);
   }
   Serial.print(msg);
+  Serial.flush();
 }
 
 void reconnect() {
@@ -79,11 +88,13 @@ void reconnect() {
     // Attempt to connect
     if (client.connect(clientId.c_str(), mqttUser.c_str(), mqttPass.c_str())) {
       client.subscribe(subscribeTopic);
-      client.subscribe(publishTopic);
     } else {
-      Serial.print("ERROR: failed, rc=");
+      Serial.print("[ERROR: failed, rc=");
       Serial.print(client.state());
-      Serial.println("DEBUG: try again in 5 seconds");
+      Serial.print(" DEBUG: try again in 5 seconds]\n");
+      Serial.flush();
+      Serial.print(String(-1));
+      Serial.flush();
       // Wait 5 seconds before retrying
       delay(5000);
     }
