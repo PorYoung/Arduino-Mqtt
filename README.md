@@ -199,3 +199,21 @@ void loop() {
 ### Debug串口
 
 使用XBee USB Adapter适配器，将接地引脚、TX、RX分别接在IO扩展板的接地、10、11上，并用usb线连接电脑，打开CoolTerm，选择不同的端口，查看调试信息，进行调试。
+
+### 其他问题
+
+#### 数据上行与下行的若干问题【2019-3-26更新】
+
+##### pubsubclient mqtt的上行和下行数据大小限制
+
+`pubsubclient`默认下行数据大小`128bytes`，超过大小的都会忽略，可以在`pubsubclient.h`中修改。
+
+`pubsubclient`默认没有下行数据的限制，最大数据受制于硬件，但使用上例的`client.publish()`*似乎*无法直接发送超过100字节的数据，需要使用以下（不止这一种）方式替换：
+
+```js
+client.beginPublish(publishTopic, String(strRecv).length(), false);
+client.print(String(strRecv).c_str());
+client.endPublish();
+```
+
+##### 使用`Serial.flush`避免串口数据混淆
