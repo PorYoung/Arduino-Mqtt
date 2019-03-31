@@ -210,10 +210,51 @@ void loop() {
 
 `pubsubclient`默认没有下行数据的限制，最大数据受制于硬件，但使用上例的`client.publish()`*似乎*无法直接发送超过100字节的数据，需要使用以下（不止这一种）方式替换：
 
-```js
+```c++
 client.beginPublish(publishTopic, String(strRecv).length(), false);
 client.print(String(strRecv).c_str());
 client.endPublish();
 ```
 
 ##### 使用`Serial.flush`避免串口数据混淆
+
+#### arduino处理接收数据的方式【2019-3-31更新】
+
+此处假定arduino接收的数据格式为`|1|2|3|`的以`|`分割的形式
+
+```c++
+#define MAX_INSTRUCTION_LENGTH 10
+String strArr[MAX_INSTRUCTION_LENGTH];
+int len = 0;
+int pos = 0;
+String str = strRecv.substring(strRecv.indexOf("|") + 1, strRecv.length());
+do {
+	pos = str.indexOf("|");
+	if (pos != -1) {
+	  strArr[len] = str.substring(0, pos);
+	  len++;
+	  str = str.substring(pos + 1, str.length());
+	}
+} while (pos > 0);
+
+int idx1 = atoi(strArr[0].c_str());
+if (idx1 == 1) {
+	int idx2 = atoi(strArr[1].c_str());
+	if (idx2 == 1 && !stopUploadAllData) {
+		// 停止上传数据 |1|1|
+	  stopUploadAllData = true;
+	  debugSerial.println("Stop");
+	} else if (idx2 == 2 && stopUploadAllData) {
+		// 启动上传数据 |1|2|
+	  stopUploadAllData = false;
+	  debugSerial.println("Start");
+	} else if (idx2 == 3) {
+	  int t = atoi(strArr[2].c_str());
+	  if (t >= 1 && t <= 10) {
+	  	// 修改采集数据间隔时间 |1|3|time|
+	    collectIntervalTime = t * 1000;
+	    debugSerial.println("Time Change To " + (String)collectIntervalTime);
+	  }
+	}
+}
+```
